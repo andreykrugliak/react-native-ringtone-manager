@@ -1,13 +1,24 @@
-
 package com.reactlibrary;
 
 import android.content.ContentResolver;
 import android.content.ContentValues;
+import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.provider.MediaStore;
+import android.util.Log;
+import android.os.Build;
+import android.provider.Settings;
+import android.content.Intent;
+import android.os.Environment;
+import android.database.Cursor;
+import android.content.Context;
+import android.widget.Toast;
 
+
+import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Callback;
@@ -21,7 +32,7 @@ import java.util.Map;
 
 public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
 
-    private final ReactApplicationContext reactContext;
+    private final ReactContext reactContext;
     private static final String TYPE_ALARM_KEY = "TYPE_ALARM";
     private static final String TYPE_ALL_KEY = "TYPE_ALL";
     private static final String TYPE_NOTIFICATION_KEY = "TYPE_NOTIFICATION";
@@ -58,26 +69,63 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
+    public void play() {
+        Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        Ringtone r = RingtoneManager.getRingtone(reactContext, notification);
+        r.play();
+    }
+
+    @ReactMethod
     public void createRingtone(ReadableMap settings) {
-        String uriStr = settings.getString(SettingsKeys.URI);
-        File ringtone = new File(uriStr);
-        ContentValues values = new ContentValues();
-        values.put(MediaStore.MediaColumns.DATA, ringtone.getAbsolutePath());
-        values.put(MediaStore.MediaColumns.TITLE, settings.getString(SettingsKeys.TITLE));
-        values.put(MediaStore.MediaColumns.SIZE, settings.getInt(SettingsKeys.SIZE));
-        values.put(MediaStore.MediaColumns.MIME_TYPE, settings.getString(SettingsKeys.MIME_TYPE));
-        values.put(MediaStore.Audio.Media.ARTIST, settings.getString(SettingsKeys.ARTIST));
-        values.put(MediaStore.Audio.Media.DURATION, settings.getInt(SettingsKeys.DURATION));
-        int ringtoneType = settings.getInt(SettingsKeys.RINGTONE_TYPE);
-        values.put(MediaStore.Audio.Media.IS_RINGTONE, isRingtoneType(ringtoneType, RingtoneManager.TYPE_RINGTONE));
-        values.put(MediaStore.Audio.Media.IS_NOTIFICATION, isRingtoneType(ringtoneType, RingtoneManager.TYPE_NOTIFICATION));
-        values.put(MediaStore.Audio.Media.IS_ALARM, isRingtoneType(ringtoneType, RingtoneManager.TYPE_ALARM));
-        values.put(MediaStore.Audio.Media.IS_MUSIC, false);
-        if (ringtone.exists() && getCurrentActivity() != null) {
+      String uriStr = settings.getString(SettingsKeys.URI);
+      File dir = Environment.getExternalStorageDirectory();
+      File ringtone = new File(Environment.getExternalStorageDirectory(), uriStr);
+      ContentValues values = new ContentValues();
+      values.put(MediaStore.MediaColumns.DATA, ringtone.getAbsolutePath());
+      values.put(MediaStore.MediaColumns.TITLE, settings.getString(SettingsKeys.TITLE));
+      values.put(MediaStore.MediaColumns.SIZE, settings.getInt(SettingsKeys.SIZE));
+      values.put(MediaStore.MediaColumns.MIME_TYPE, settings.getString(SettingsKeys.MIME_TYPE));
+      values.put(MediaStore.Audio.Media.ARTIST, settings.getString(SettingsKeys.ARTIST));
+      values.put(MediaStore.Audio.Media.DURATION, settings.getInt(SettingsKeys.DURATION));
+      int ringtoneType = settings.getInt(SettingsKeys.RINGTONE_TYPE);
+      values.put(MediaStore.Audio.Media.IS_RINGTONE, isRingtoneType(ringtoneType, RingtoneManager.TYPE_RINGTONE));
+      values.put(MediaStore.Audio.Media.IS_NOTIFICATION, isRingtoneType(ringtoneType, RingtoneManager.TYPE_NOTIFICATION));
+      values.put(MediaStore.Audio.Media.IS_ALARM, isRingtoneType(ringtoneType, RingtoneManager.TYPE_ALARM));
+      values.put(MediaStore.Audio.Media.IS_MUSIC, false);
+      // Log.d("||||||||||||||||||||||||||||| ===================================== newUri--> ", "" + newUri);
+      boolean settingsCanWrite = Settings.System.canWrite(reactContext);
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (settingsCanWrite) {
+          if (ringtone.exists() && reactContext.getCurrentActivity() != null) {
             ContentResolver contentResolver = getCurrentActivity().getContentResolver();
             Uri uri = MediaStore.Audio.Media.getContentUriForPath(ringtone.getAbsolutePath());
-            contentResolver.insert(uri, values);
+            Uri newUri = reactContext.getContentResolver().insert(uri, values);
+            String finalRingtonePath = "";
+            if (newUri != null) {
+              //RINGTONE CREATION SUCCESSFULL
+              RingtoneManager.setActualDefaultRingtoneUri(reactContext, RingtoneManager.TYPE_RINGTONE, newUri);
+              Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
+            } else {
+              //RINGTONE CREATION FAILED SO ALREADY THE RINGTONE PRESENT
+              finalRingtonePath = getVideoContentUriFromFilePath(reactContext, ringtone.getAbsolutePath());
+              if (finalRingtonePath != null && finalRingtonePath != "") {
+                RingtoneManager.setActualDefaultRingtoneUri(reactContext, RingtoneManager.TYPE_RINGTONE, Uri.parse(finalRingtonePath));
+                Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
+              } else {
+                Toast.makeText(this.reactContext, new StringBuilder().append("Sorry, the ringtone couldnt be set!"), Toast.LENGTH_LONG).show();
+              }
+            }
+              
+          } else {
+            Toast.makeText(this.reactContext, new StringBuilder().append("Sorry, the ringtone couldnt be set!"), Toast.LENGTH_LONG).show();
+          }
+        } else {
+          Intent intent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
+          intent.setData(Uri.parse("package:" + this.reactContext.getCurrentActivity().getPackageName()));
+          intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+          this.reactContext.startActivity(intent);
         }
+      }
     }
 
     @ReactMethod
@@ -110,4 +158,29 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
     private boolean isRingtoneType(int ringtoneType, int ringtoneTypeToCompare) {
         return ringtoneTypeToCompare == ringtoneType || RingtoneManager.TYPE_ALL == ringtoneType;
     }
+
+    public static String getVideoContentUriFromFilePath(Context ctx, String filePath) {
+
+      ContentResolver contentResolver = ctx.getContentResolver();
+      String ringtoneUriStr = null;
+        long ringtoneId = -1;
+
+        // This returns us content://media/external/ringtones/media (or something like that)
+        // I pass in "external" because that's the MediaStore's name for the external
+        // storage on my device (the other possibility is "internal")
+        Uri ringtonesUri = MediaStore.Audio.Media.getContentUri("external");
+
+        String[] projection = {MediaStore.Audio.AudioColumns._ID};
+
+        // TODO This will break if we have no matching item in the MediaStore.
+        Cursor cursor = contentResolver.query(ringtonesUri, projection, MediaStore.Audio.AudioColumns.DATA + " LIKE ?", new String[] { filePath }, null);
+        cursor.moveToFirst();
+
+        int columnIndex = cursor.getColumnIndex(projection[0]);
+        ringtoneId = cursor.getLong(columnIndex);
+
+        cursor.close();
+        if (ringtoneId != -1 ) ringtoneUriStr = ringtonesUri.toString() + "/" + ringtoneId;
+        return ringtoneUriStr;
+    }    
 }
