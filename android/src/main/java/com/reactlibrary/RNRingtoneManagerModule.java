@@ -26,6 +26,11 @@ import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReadableMap;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -81,9 +86,10 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
     public void createRingtone(ReadableMap settings) {
       String uriStr = settings.getString(SettingsKeys.URI);
       File dir = Environment.getExternalStorageDirectory();
-      File ringtone = new File(Environment.getExternalStorageDirectory(), uriStr);
+      // File ringtone = new File(Environment.getDataDirectory() + "/user/0/com.imax.ringtone/files", uriStr);
+      File ringtone = new File(reactContext.getFilesDir(), uriStr);
       ContentValues values = new ContentValues();
-      values.put(MediaStore.MediaColumns.DATA, ringtone.getAbsolutePath());
+      // values.put(MediaStore.MediaColumns.DATA, ringtone.getAbsolutePath());
       values.put(MediaStore.MediaColumns.TITLE, settings.getString(SettingsKeys.TITLE));
       values.put(MediaStore.MediaColumns.SIZE, settings.getInt(SettingsKeys.SIZE));
       values.put(MediaStore.MediaColumns.MIME_TYPE, settings.getString(SettingsKeys.MIME_TYPE));
@@ -94,15 +100,29 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
       values.put(MediaStore.Audio.Media.IS_NOTIFICATION, isRingtoneType(ringtoneType, RingtoneManager.TYPE_NOTIFICATION));
       values.put(MediaStore.Audio.Media.IS_ALARM, isRingtoneType(ringtoneType, RingtoneManager.TYPE_ALARM));
       values.put(MediaStore.Audio.Media.IS_MUSIC, false);
+      // Log.d("||||||||||||||||||||||||||||| ===================================== ringtone.exists()--> ", "" + ringtone.exists());
       boolean settingsCanWrite = Settings.System.canWrite(reactContext);
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
         if (settingsCanWrite) {
           if (ringtone.exists() && reactContext.getCurrentActivity() != null) {
+            //CHECK IF IT IS COPIED, IF YES, DIRECTLY SEND THE URI OF THAT FILE, ELSE COPY THE FILE
+            File testRingtoneExistOrNot = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_RINGTONES), uriStr);
+            File newRingtone;
+            if (testRingtoneExistOrNot.exists()) {
+              //RINGTONE WAS ALREADY COPIED SO USE THAT
+              newRingtone = testRingtoneExistOrNot;
+            } else {
+              //COPY THE RINGTONE
+              newRingtone = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_RINGTONES), uriStr);
+            }
+            //COPY THE FILE FROM DATA DIRECTORY TO RINGTONES DIRECTORY AND THEN USE THAT URI
+            //COPY THE RINGTONE
+            values.put(MediaStore.MediaColumns.DATA, newRingtone.getAbsolutePath());
             if (ringtoneType == 5) {
               // Log.d("||||||||||||||||||||||||||||| ===================================== ringtoneType IF--> ", "" + ringtoneType);
               //CONTACT RINGTONE
               ContentResolver contentResolver = getCurrentActivity().getContentResolver();
-              Uri uri = MediaStore.Audio.Media.getContentUriForPath(ringtone.getAbsolutePath());
+              Uri uri = MediaStore.Audio.Media.getContentUriForPath(newRingtone.getAbsolutePath());
               Uri newUri = reactContext.getContentResolver().insert(uri, values);
               String finalRingtonePath = "";
               //RINGTONE CREATION SUCCESSFULL
@@ -110,16 +130,15 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
               String contactId = settings.getString(SettingsKeys.CONTACT_RECORD_ID);
               Uri localUri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, contactId);
               ContentValues localContentValues = new ContentValues();
-              Uri uriOfRt = Uri.fromFile(new File( ringtone.getAbsolutePath()));
+              Uri uriOfRt = Uri.fromFile(new File(newRingtone.getAbsolutePath()));
               localContentValues.put(ContactsContract.Data.RAW_CONTACT_ID, contactId);
               localContentValues.put(ContactsContract.Data.CUSTOM_RINGTONE, uriOfRt.toString());
               contentResolver.update(localUri, localContentValues, null, null);                
               Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
             } else {
               //OTHER RINGTONES
-              // Log.d("||||||||||||||||||||||||||||| ===================================== ringtoneType ELSE--> ", "" + ringtoneType);
               ContentResolver contentResolver = getCurrentActivity().getContentResolver();
-              Uri uri = MediaStore.Audio.Media.getContentUriForPath(ringtone.getAbsolutePath());
+              Uri uri = MediaStore.Audio.Media.getContentUriForPath(newRingtone.getAbsolutePath());
               Uri newUri = reactContext.getContentResolver().insert(uri, values);
               String finalRingtonePath = "";
               if (newUri != null) {
@@ -128,7 +147,7 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
                 Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
               } else {
                 //RINGTONE CREATION FAILED SO ALREADY THE RINGTONE PRESENT
-                finalRingtonePath = getVideoContentUriFromFilePath(reactContext, ringtone.getAbsolutePath());
+                finalRingtonePath = getVideoContentUriFromFilePath(reactContext, newRingtone.getAbsolutePath());
                 if (finalRingtonePath != null && finalRingtonePath != "") {
                   RingtoneManager.setActualDefaultRingtoneUri(reactContext, ringtoneType, Uri.parse(finalRingtonePath));
                   Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
@@ -137,7 +156,6 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
                 }
               }
             }
-              
           } else {
             Toast.makeText(this.reactContext, new StringBuilder().append("Sorry, the ringtone couldnt be set!"), Toast.LENGTH_LONG).show();
           }
@@ -204,5 +222,47 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
         cursor.close();
         if (ringtoneId != -1 ) ringtoneUriStr = ringtonesUri.toString() + "/" + ringtoneId;
         return ringtoneUriStr;
-    }    
+    } 
+
+    public void copyFile(String inputPath, String inputFile, String outputPath) {
+    Log.d("||||||||||||||||||||||||||||| ===================================== inputPath--> ", "" + inputPath);
+    Log.d("||||||||||||||||||||||||||||| ===================================== inputFile--> ", "" + inputFile);
+    Log.d("||||||||||||||||||||||||||||| ===================================== outputPath--> ", "" + outputPath);
+    InputStream in = null;
+    OutputStream out = null;
+    try {
+
+        //create output directory if it doesn't exist
+        File dir = new File (outputPath); 
+        if (!dir.exists())
+        {
+            dir.mkdirs();
+        }
+
+
+        in = new FileInputStream(inputPath + inputFile);        
+        out = new FileOutputStream(outputPath + inputFile);
+
+        byte[] buffer = new byte[1024];
+        int read;
+        while ((read = in.read(buffer)) != -1) {
+            out.write(buffer, 0, read);
+        }
+        in.close();
+        in = null;
+
+        // write the output file (You have now copied the file)
+        out.flush();
+        out.close();
+        out = null;        
+
+    }  catch (FileNotFoundException fnfe1) {
+        Log.e("============ tag", fnfe1.getMessage());
+    }
+            catch (Exception e) {
+        Log.e("============ tag", e.getMessage());
+    }
+
+}
+   
 }
