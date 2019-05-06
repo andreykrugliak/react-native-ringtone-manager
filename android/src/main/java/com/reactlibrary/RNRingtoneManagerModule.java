@@ -100,7 +100,6 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
       values.put(MediaStore.Audio.Media.IS_NOTIFICATION, isRingtoneType(ringtoneType, RingtoneManager.TYPE_NOTIFICATION));
       values.put(MediaStore.Audio.Media.IS_ALARM, isRingtoneType(ringtoneType, RingtoneManager.TYPE_ALARM));
       values.put(MediaStore.Audio.Media.IS_MUSIC, false);
-      // Log.d("||||||||||||||||||||||||||||| ===================================== ringtone.exists()--> ", "" + ringtone.exists());
       boolean settingsCanWrite = Settings.System.canWrite(reactContext);
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
         if (settingsCanWrite) {
@@ -113,13 +112,13 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
               newRingtone = testRingtoneExistOrNot;
             } else {
               //COPY THE RINGTONE
+              copyFile("" + reactContext.getFilesDir(), "/" + uriStr, "" + Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_RINGTONES));
               newRingtone = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_RINGTONES), uriStr);
             }
             //COPY THE FILE FROM DATA DIRECTORY TO RINGTONES DIRECTORY AND THEN USE THAT URI
             //COPY THE RINGTONE
             values.put(MediaStore.MediaColumns.DATA, newRingtone.getAbsolutePath());
             if (ringtoneType == 5) {
-              // Log.d("||||||||||||||||||||||||||||| ===================================== ringtoneType IF--> ", "" + ringtoneType);
               //CONTACT RINGTONE
               ContentResolver contentResolver = getCurrentActivity().getContentResolver();
               Uri uri = MediaStore.Audio.Media.getContentUriForPath(newRingtone.getAbsolutePath());
@@ -225,9 +224,6 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
     } 
 
     public void copyFile(String inputPath, String inputFile, String outputPath) {
-    Log.d("||||||||||||||||||||||||||||| ===================================== inputPath--> ", "" + inputPath);
-    Log.d("||||||||||||||||||||||||||||| ===================================== inputFile--> ", "" + inputFile);
-    Log.d("||||||||||||||||||||||||||||| ===================================== outputPath--> ", "" + outputPath);
     InputStream in = null;
     OutputStream out = null;
     try {
