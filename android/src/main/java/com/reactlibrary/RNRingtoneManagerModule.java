@@ -83,7 +83,7 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void createRingtone(ReadableMap settings) {
+    public void createRingtone(ReadableMap settings, Callback successCallback) {
       String uriStr = settings.getString(SettingsKeys.URI);
       File dir = Environment.getExternalStorageDirectory();
       // File ringtone = new File(Environment.getDataDirectory() + "/user/0/com.imax.ringtone/files", uriStr);
@@ -134,6 +134,7 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
               localContentValues.put(ContactsContract.Data.CUSTOM_RINGTONE, uriOfRt.toString());
               contentResolver.update(localUri, localContentValues, null, null);                
               // Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
+              successCallback.invoke("SUCCESS");
             } else {
               //OTHER RINGTONES
               ContentResolver contentResolver = getCurrentActivity().getContentResolver();
@@ -144,21 +145,26 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
                 //RINGTONE CREATION SUCCESSFULL
                 RingtoneManager.setActualDefaultRingtoneUri(reactContext, ringtoneType, newUri);
                 // Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
+                successCallback.invoke("SUCCESS");
               } else {
                 //RINGTONE CREATION FAILED SO ALREADY THE RINGTONE PRESENT
                 finalRingtonePath = getVideoContentUriFromFilePath(reactContext, newRingtone.getAbsolutePath());
                 if (finalRingtonePath != null && finalRingtonePath != "") {
                   RingtoneManager.setActualDefaultRingtoneUri(reactContext, ringtoneType, Uri.parse(finalRingtonePath));
                   // Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
+                  successCallback.invoke("SUCCESS");
                 } else {
+                  successCallback.invoke("FAILED");
                   // Toast.makeText(this.reactContext, new StringBuilder().append("Sorry, the ringtone couldnt be set!"), Toast.LENGTH_LONG).show();
                 }
               }
             }
           } else {
+            successCallback.invoke("FAILED");
             // Toast.makeText(this.reactContext, new StringBuilder().append("Sorry, the ringtone couldnt be set!"), Toast.LENGTH_LONG).show();
           }
         } else {
+          successCallback.invoke("PERMISSION_ISSUE");
           Intent intent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
           intent.setData(Uri.parse("package:" + this.reactContext.getCurrentActivity().getPackageName()));
           intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
