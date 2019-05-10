@@ -133,7 +133,7 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
               localContentValues.put(ContactsContract.Data.RAW_CONTACT_ID, contactId);
               localContentValues.put(ContactsContract.Data.CUSTOM_RINGTONE, uriOfRt.toString());
               contentResolver.update(localUri, localContentValues, null, null);                
-              Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
+              // Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
             } else {
               //OTHER RINGTONES
               ContentResolver contentResolver = getCurrentActivity().getContentResolver();
@@ -143,20 +143,20 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
               if (newUri != null) {
                 //RINGTONE CREATION SUCCESSFULL
                 RingtoneManager.setActualDefaultRingtoneUri(reactContext, ringtoneType, newUri);
-                Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
+                // Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
               } else {
                 //RINGTONE CREATION FAILED SO ALREADY THE RINGTONE PRESENT
                 finalRingtonePath = getVideoContentUriFromFilePath(reactContext, newRingtone.getAbsolutePath());
                 if (finalRingtonePath != null && finalRingtonePath != "") {
                   RingtoneManager.setActualDefaultRingtoneUri(reactContext, ringtoneType, Uri.parse(finalRingtonePath));
-                  Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
+                  // Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
                 } else {
-                  Toast.makeText(this.reactContext, new StringBuilder().append("Sorry, the ringtone couldnt be set!"), Toast.LENGTH_LONG).show();
+                  // Toast.makeText(this.reactContext, new StringBuilder().append("Sorry, the ringtone couldnt be set!"), Toast.LENGTH_LONG).show();
                 }
               }
             }
           } else {
-            Toast.makeText(this.reactContext, new StringBuilder().append("Sorry, the ringtone couldnt be set!"), Toast.LENGTH_LONG).show();
+            // Toast.makeText(this.reactContext, new StringBuilder().append("Sorry, the ringtone couldnt be set!"), Toast.LENGTH_LONG).show();
           }
         } else {
           Intent intent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
