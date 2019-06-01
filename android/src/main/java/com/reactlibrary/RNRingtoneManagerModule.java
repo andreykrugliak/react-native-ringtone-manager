@@ -174,6 +174,91 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
+    public void setRingtoneFromRingtonesFolder(ReadableMap settings, Callback successCallback) {
+      String uriStr = settings.getString(SettingsKeys.URI);
+      File ringtone = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_RINGTONES), uriStr);
+      // Log.d("SetRingtone", "= = = = = = = ringtone = " + ringtone);
+      ContentValues values = new ContentValues();
+      values.put(MediaStore.MediaColumns.TITLE, settings.getString(SettingsKeys.TITLE));
+      values.put(MediaStore.MediaColumns.SIZE, settings.getInt(SettingsKeys.SIZE));
+      values.put(MediaStore.MediaColumns.MIME_TYPE, settings.getString(SettingsKeys.MIME_TYPE));
+      values.put(MediaStore.Audio.Media.ARTIST, settings.getString(SettingsKeys.ARTIST));
+      values.put(MediaStore.Audio.Media.DURATION, settings.getInt(SettingsKeys.DURATION));
+      int ringtoneType = settings.getInt(SettingsKeys.RINGTONE_TYPE);
+      values.put(MediaStore.Audio.Media.IS_RINGTONE, isRingtoneType(ringtoneType, RingtoneManager.TYPE_RINGTONE));
+      values.put(MediaStore.Audio.Media.IS_NOTIFICATION, isRingtoneType(ringtoneType, RingtoneManager.TYPE_NOTIFICATION));
+      values.put(MediaStore.Audio.Media.IS_ALARM, isRingtoneType(ringtoneType, RingtoneManager.TYPE_ALARM));
+      values.put(MediaStore.Audio.Media.IS_MUSIC, false);
+      boolean settingsCanWrite = Settings.System.canWrite(reactContext);
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        if (settingsCanWrite) {
+          if (ringtone.exists() && reactContext.getCurrentActivity() != null) {
+            //CHECK IF IT IS COPIED, IF YES, DIRECTLY SEND THE URI OF THAT FILE, ELSE COPY THE FILE
+            //COPY THE FILE FROM DATA DIRECTORY TO RINGTONES DIRECTORY AND THEN USE THAT URI
+            //COPY THE RINGTONE
+            values.put(MediaStore.MediaColumns.DATA, ringtone.getAbsolutePath());
+            // Log.d("SetRingtone", "= = = = = = = values = " + values);
+            if (ringtoneType == 5) {
+              //CONTACT RINGTONE
+              ContentResolver contentResolver = getCurrentActivity().getContentResolver();
+              Uri uri = MediaStore.Audio.Media.getContentUriForPath(ringtone.getAbsolutePath());
+              // Log.d("SetRingtone", "= = = = = = = uri = " + uri);
+              Uri newUri = reactContext.getContentResolver().insert(uri, values);
+              // Log.d("SetRingtone", "= = = = = = = newUri = " + newUri);
+              String finalRingtonePath = "";
+              //RINGTONE CREATION SUCCESSFULL
+              Uri contactData = ContactsContract.Contacts.CONTENT_URI;
+              String contactId = settings.getString(SettingsKeys.CONTACT_RECORD_ID);
+              Uri localUri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, contactId);
+              ContentValues localContentValues = new ContentValues();
+              Uri uriOfRt = Uri.fromFile(new File(ringtone.getAbsolutePath()));
+              localContentValues.put(ContactsContract.Data.RAW_CONTACT_ID, contactId);
+              localContentValues.put(ContactsContract.Data.CUSTOM_RINGTONE, uriOfRt.toString());
+              contentResolver.update(localUri, localContentValues, null, null);                
+              // Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
+              successCallback.invoke("SUCCESS");
+            } else {
+              //OTHER RINGTONES
+              ContentResolver contentResolver = getCurrentActivity().getContentResolver();
+              Uri uri = MediaStore.Audio.Media.getContentUriForPath(ringtone.getAbsolutePath());
+              // Log.d("SetRingtone", "= = = = = = = uri = " + uri);
+              Uri newUri = reactContext.getContentResolver().insert(uri, values);
+              // Log.d("SetRingtone", "= = = = = = = newUri = " + newUri);
+              String finalRingtonePath = "";
+              if (newUri != null) {
+                //RINGTONE CREATION SUCCESSFULL
+                RingtoneManager.setActualDefaultRingtoneUri(reactContext, ringtoneType, newUri);
+                // Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
+                successCallback.invoke("SUCCESS");
+              } else {
+                //RINGTONE CREATION FAILED SO ALREADY THE RINGTONE PRESENT
+                finalRingtonePath = getVideoContentUriFromFilePath(reactContext, ringtone.getAbsolutePath());
+                // Log.d("SetRingtone", "= = = = = = = finalRingtonePath = " + finalRingtonePath);
+                if (finalRingtonePath != null && finalRingtonePath != "") {
+                  RingtoneManager.setActualDefaultRingtoneUri(reactContext, ringtoneType, Uri.parse(finalRingtonePath));
+                  // Toast.makeText(this.reactContext, new StringBuilder().append("Ringtone set successfully"), Toast.LENGTH_LONG).show();
+                  successCallback.invoke("SUCCESS");
+                } else {
+                  successCallback.invoke("FAILED");
+                  // Toast.makeText(this.reactContext, new StringBuilder().append("Sorry, the ringtone couldnt be set!"), Toast.LENGTH_LONG).show();
+                }
+              }
+            }
+          } else {
+            successCallback.invoke("FAILED");
+            // Toast.makeText(this.reactContext, new StringBuilder().append("Sorry, the ringtone couldnt be set!"), Toast.LENGTH_LONG).show();
+          }
+        } else {
+          successCallback.invoke("PERMISSION_ISSUE");
+          Intent intent = new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS);
+          intent.setData(Uri.parse("package:" + this.reactContext.getCurrentActivity().getPackageName()));
+          intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+          this.reactContext.startActivity(intent);
+        }
+      }
+    }
+
+    @ReactMethod
     public void setRingtone(String uri) {
 
     }
