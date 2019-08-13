@@ -15,6 +15,7 @@ import android.database.Cursor;
 import android.content.Context;
 import android.widget.Toast;
 import android.provider.ContactsContract;
+import android.media.Ringtone;
 
 
 import com.facebook.react.bridge.NativeModule;
@@ -89,8 +90,7 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void play() {
-        Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+    public void play(Uri notification) {
         Ringtone r = RingtoneManager.getRingtone(reactContext, notification);
         r.play();
     }
