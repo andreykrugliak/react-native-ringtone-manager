@@ -24,6 +24,8 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.WritableMap;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -65,14 +67,25 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
         return "RingtoneManager";
     }
 
-    @ReactMethod
-    public void getRingtones() {
-        getRingtones(RingtoneManager.TYPE_ALL);
+   @ReactMethod
+    public void getRingtones(Callback successCallback) {
+        getRingsByType(RingtoneManager.TYPE_NOTIFICATION, successCallback);
     }
 
     @ReactMethod
-    public void getRingtones(int ringtoneType) {
+    public void getRingsByType(int ringtoneType, Callback successCallback)          {
+        RingtoneManager manager = new RingtoneManager(this.reactContext);
+        manager.setType(ringtoneType);
+        Cursor cursor = manager.getCursor();
+        WritableMap data = Arguments.createMap();
 
+        while (cursor.moveToNext()) {
+            String notificationTitle = cursor.getString(RingtoneManager.TITLE_COLUMN_INDEX);
+            Uri notificationUri =Uri.parse(cursor.getString(RingtoneManager.URI_COLUMN_INDEX) + "/" + cursor.getString(RingtoneManager.ID_COLUMN_INDEX));
+            data.putString(notificationTitle, notificationUri.toString());
+
+        }
+        successCallback.invoke(data);
     }
 
     @ReactMethod
