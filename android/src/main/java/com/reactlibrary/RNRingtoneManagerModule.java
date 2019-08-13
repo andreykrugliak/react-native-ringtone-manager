@@ -90,7 +90,8 @@ public class RNRingtoneManagerModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void play(Uri notification) {
+    public void play(String path) {
+        Uri notification = Uri.parse(path);
         Ringtone r = RingtoneManager.getRingtone(reactContext, notification);
         r.play();
     }
